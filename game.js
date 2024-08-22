@@ -16,8 +16,8 @@ let skillPoints = 0;
 const maxInventorySize = 5;
 const baseGameSpeed = 4;
 const baseJumpDuration = 600; // Current jump duration at game speed 4
-const shootCooldown = 500;
-const maxBounces = 10;
+const shootCooldown = 300;
+const maxBounces = 20;
 let minObstacleDistance = 1000; // Increased from 800 to 1000
 
 let lastTime = 0;
@@ -53,6 +53,29 @@ let gameContainerHeight = 200;
 let isInvincible = false; // Track invincibility state
 let originalGameSpeed = gameSpeed; // Store original game speed for slow motion
 
+let isNightMode = false;
+const nightModeInterval = 1000; // Switch between day and night every 1000 points
+const increaseSpeedInterval = 1000; // Increase game speed every 1000 points
+
+let lastScoreUpdateTime = 0;
+const pointsPerMinute = 1000;
+
+function toggleNightMode() {
+    isNightMode = !isNightMode;
+    const gameElement = document.getElementById('game');
+    const sunMoon = document.getElementById('sun');
+    
+    if (isNightMode) {
+        gameElement.style.backgroundColor = '#001f3f';
+        sunMoon.textContent = '🌙';
+        sunMoon.style.color = '#f1c40f';
+    } else {
+        gameElement.style.backgroundColor = '#87CEEB';
+        sunMoon.textContent = '☀️';
+        sunMoon.style.color = '#f39c12';
+    }
+}
+
 function togglePause() {
     isPaused = !isPaused;
     if (isPaused) {
@@ -78,6 +101,16 @@ function initGame() {
     
     // Add resize event listener
     window.addEventListener('resize', resizeGame);
+    
+    // Set up initial day mode
+    const sunMoon = document.getElementById('sun');
+    sunMoon.textContent = '☀️';
+    sunMoon.style.color = '#f39c12';
+
+    // reset night mode
+    if (isNightMode) {
+        toggleNightMode();
+    }
 }
 
 function formatSkillName(skill) {
@@ -296,6 +329,28 @@ function startGame() {
     lastObstaclePosition = minObstacleDistance;
     lastCoinPosition = 0;
     lastBirdPosition = 0;
+    lastScoreUpdateTime = null;
+    
+    // Reset game speed based on difficulty
+    switch (difficulty) {
+        case 'easy':
+            gameSpeed = 3;
+            break;
+        case 'medium':
+            gameSpeed = 4;
+            break;
+        case 'hard':
+            gameSpeed = 5;
+            break;
+        default:
+            gameSpeed = 4; // Default to medium if difficulty is not set
+    }
+    
+    // Reset night mode
+    if (isNightMode) {
+        toggleNightMode();
+    }
+    
     updateUI();
     
     // Clear existing obstacles
@@ -309,7 +364,36 @@ function startGame() {
     gameLoop(performance.now());
 }
 
-let scoreIncrementTime = 0; // Track time for score increment
+function updateScore(timestamp) {
+    if (!lastScoreUpdateTime) lastScoreUpdateTime = timestamp;
+    
+    const elapsedTime = timestamp - lastScoreUpdateTime;
+    const pointsToAdd = Math.floor((elapsedTime / 60000) * pointsPerMinute);
+    
+    if (pointsToAdd > 0) {
+        const oldScore = score;
+        score += pointsToAdd;
+        lastScoreUpdateTime = timestamp;
+        scoreElement.textContent = score;
+
+        // Check for speed increase
+        if (Math.floor(score / increaseSpeedInterval) > Math.floor(oldScore / increaseSpeedInterval)) {
+            gameSpeed += difficulty === 'easy' ? 0.2 : (difficulty === 'medium' ? 0.3 : 0.4);
+            minObstacleDistance = Math.max(minObstacleDistance - 20, 300);
+        }
+    
+        // Check for night mode toggle
+        if (Math.floor(score / nightModeInterval) > Math.floor(oldScore / nightModeInterval)) {
+            toggleNightMode();
+        }
+    
+        if (score > highScore) {
+            highScore = score;
+            highScoreElement.textContent = highScore;
+            localStorage.setItem('highScore', highScore.toString());
+        }
+    }
+}
 
 function gameLoop(timestamp) {
     if (!lastTime) lastTime = timestamp;
@@ -317,13 +401,6 @@ function gameLoop(timestamp) {
     lastTime = timestamp;
 
     if (!isPaused) {
-        // scoreIncrementTime += delta;
-        // if (scoreIncrementTime >= 1000) { // Increment score every second
-        //     score += 10; // 100 points per 10 seconds = 10 points per second
-        //     scoreIncrementTime = 0;
-        //     updateUI();
-        // }
-
         moveElements('.cactus, .bird, .coin, .item', delta);
         generateObstacles(delta);
 
@@ -334,6 +411,7 @@ function gameLoop(timestamp) {
                 element.remove();
             }
         });
+        updateScore(timestamp);
     }
 
     requestAnimationFrame(gameLoop);
@@ -502,26 +580,6 @@ function isOnScreen(element) {
     return rect.left < window.innerWidth && rect.right > 0;
 }
 
-function updateScore() {
-    if (score % 3 === 0) { // Increment score every 3 frames instead of every frame
-        score++;
-        if (score % 5 === 0) { // Update the displayed score every 5 points
-            scoreElement.textContent = score;
-            
-            if (score > highScore) {
-                highScore = score;
-                highScoreElement.textContent = highScore;
-                localStorage.setItem('highScore', highScore.toString());
-            }
-            
-            if (score % 500 === 0) { // Changed from 1000 to 500
-                gameSpeed += difficulty === 'easy' ? 0.2 : (difficulty === 'medium' ? 0.3 : 0.4);
-                minObstacleDistance = Math.max(minObstacleDistance - 20, 300); // Decrease minimum distance, but not below 300
-            }
-        }
-    }
-}
-
 function gameOver() {
     lives--;
     document.getElementById('lives').textContent = lives;
@@ -582,20 +640,17 @@ function setDifficulty(level) {
     difficulty = level;
     switch (level) {
         case 'easy':
-            gameSpeed = 3;
-            minObstacleDistance = 250; // Increased from 200 to 250
+            minObstacleDistance = 250;
             break;
         case 'medium':
-            gameSpeed = 4;
-            minObstacleDistance = 200; // Increased from 150 to 200
+            minObstacleDistance = 200;
             break;
         case 'hard':
-            gameSpeed = 5;
-            minObstacleDistance = 200; // Increased from 100 to 150
+            minObstacleDistance = 200;
             break;
     }
     startOverlay.style.display = 'none'; // Hide the start overlay
-    startGame(); // Start the game immediately
+    startGame(); // Start the game after setting the difficulty
 }
 
 function checkMobile() {
