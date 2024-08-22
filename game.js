@@ -543,7 +543,7 @@ function setDifficulty(level) {
             break;
         case 'hard':
             gameSpeed = 5;
-            minObstacleDistance = 150; // Increased from 100 to 150
+            minObstacleDistance = 200; // Increased from 100 to 150
             break;
     }
     startOverlay.style.display = 'none'; // Hide the start overlay
@@ -552,11 +552,6 @@ function setDifficulty(level) {
 
 document.addEventListener('keydown', (event) => {
     if (event.code === 'Space') {
-        if (!gameStarted) {
-            gameStarted = true;
-            startGame();
-            startOverlay.style.display = 'none'; // Hide the start overlay
-        }
         startJump(event);
     } else if (event.code === 'KeyX') {
         shootFireball();
