@@ -39,7 +39,7 @@ const items = {
 };
 
 let isPaused = false;
-let difficulty = 'medium'; // Change from const to let
+let difficulty = null; // Change from const to let and initialize to null
 
 let gameStarted = false; // Add a flag to check if the game has started
 
@@ -57,7 +57,6 @@ function initGame() {
     createSkillButtons();
     initializeRPGElements();
     dino.style.bottom = '-10px';
-    setDifficulty(difficulty); // Set difficulty without starting the game
     updateUI(); // Update UI without starting the game
 }
 
@@ -258,13 +257,21 @@ function startGame() {
     gameLoop(performance.now());
 }
 
+let scoreIncrementTime = 0; // Track time for score increment
+
 function gameLoop(timestamp) {
     if (!lastTime) lastTime = timestamp;
     const delta = timestamp - lastTime;
     lastTime = timestamp;
 
     if (!isPaused) {
-        updateScore();
+        scoreIncrementTime += delta;
+        if (scoreIncrementTime >= 1000) { // Increment score every second
+            score += 10; // 100 points per 10 seconds = 10 points per second
+            scoreIncrementTime = 0;
+            updateUI();
+        }
+
         moveElements('.cactus, .bird, .coin, .item', delta);
         generateObstacles(delta);
 
@@ -539,6 +546,8 @@ function setDifficulty(level) {
             minObstacleDistance = 150; // Increased from 100 to 150
             break;
     }
+    startOverlay.style.display = 'none'; // Hide the start overlay
+    startGame(); // Start the game immediately
 }
 
 document.addEventListener('keydown', (event) => {
