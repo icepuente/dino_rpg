@@ -14,7 +14,8 @@ let level = 1;
 let skillPoints = 0;
 
 const maxInventorySize = 5;
-const jumpDuration = 600;
+const baseGameSpeed = 4;
+const baseJumpDuration = 600; // Current jump duration at game speed 4
 const shootCooldown = 500;
 const maxBounces = 10;
 let minObstacleDistance = 1000; // Increased from 800 to 1000
@@ -34,8 +35,10 @@ let inventory = [];
 const skills = { jumpHeight: 1, fireballPower: 1, speed: 1 };
 const items = {
     speedBoost: { name: 'Speed Boost', emoji: '⚡', effect: () => { gameSpeed += 2; setTimeout(() => { gameSpeed -= 2; }, 5000); } },
-    shield: { name: 'Shield', emoji: '🛡️', effect: () => { lives++; updateUI(); } },
-    doubleJump: { name: 'Double Jump', emoji: '🦘', effect: () => { maxJumpHeight *= 1.5; setTimeout(() => { maxJumpHeight /= 1.5; }, 10000); } }
+    extraLife: { name: 'Extra Life', emoji: '❤️', effect: () => { lives++; updateUI(); } },
+    doubleJump: { name: 'Double Jump', emoji: '🦘', effect: () => { maxJumpHeight *= 1.5; setTimeout(() => { maxJumpHeight /= 1.5; }, 10000); } },
+    invincibility: { name: 'Invincibility', emoji: '🛡️', effect: () => { activateInvincibility(5000); } }, // 5 seconds of invincibility
+    slowMotion: { name: 'Slow Motion', emoji: '🐢', effect: () => { activateSlowMotion(5000); } } // 5 seconds of slow motion
 };
 
 let isPaused = false;
@@ -47,6 +50,8 @@ let gameStarted = false; // Add a flag to check if the game has started
 let isMobile = false;
 let gameContainerWidth = 600;
 let gameContainerHeight = 200;
+let isInvincible = false; // Track invincibility state
+let originalGameSpeed = gameSpeed; // Store original game speed for slow motion
 
 function togglePause() {
     isPaused = !isPaused;
@@ -75,11 +80,17 @@ function initGame() {
     window.addEventListener('resize', resizeGame);
 }
 
+function formatSkillName(skill) {
+    return skill
+        .replace(/([A-Z])/g, ' $1') // Add a space before each uppercase letter
+        .replace(/^./, str => str.toUpperCase()); // Capitalize the first letter
+}
+
 function createSkillButtons() {
     Object.keys(skills).forEach(skill => {
         const button = document.createElement('button');
         button.classList.add('skill-button');
-        button.textContent = `Upgrade ${skill.charAt(0).toUpperCase() + skill.slice(1)}`;
+        button.textContent = `Upgrade ${formatSkillName(skill)}`;
         button.onclick = () => upgradeSkill(skill);
         skillsDiv.appendChild(button);
     });
@@ -96,7 +107,7 @@ function upgradeSkill(skill) {
 
 function applySkillEffects() {
     maxJumpHeight = 100 + (skills.jumpHeight - 1) * 20;
-    gameSpeed = 5 + (skills.speed - 1);
+    gameSpeed = gameSpeed + (skills.speed - 1);
 }
 
 function addXP(amount) {
@@ -147,8 +158,13 @@ function startJump(event) {
     }
 }
 
+function calculateJumpDuration() {
+    return baseJumpDuration * (baseGameSpeed / gameSpeed);
+}
+
 function jumpAnimation() {
     let elapsedTime = Date.now() - jumpStartTime;
+    let jumpDuration = calculateJumpDuration();
     let progress = Math.min(1, elapsedTime / jumpDuration);
     let easeProgress = Math.sin(progress * Math.PI);
     let height = maxJumpHeight * easeProgress;
@@ -255,10 +271,23 @@ function destroyObstacle(obstacle) {
     addXP(10);
     updateUI();
 
+    // 10% chance to drop an item
+    if (Math.random() < 0.1) {
+        dropItem();
+    }
+
     // Remove explosion after a short delay
     setTimeout(() => {
         game.removeChild(explosion);
     }, 300);
+}
+
+function dropItem() {
+    const itemKeys = Object.keys(items);
+    const randomItemKey = itemKeys[Math.floor(Math.random() * itemKeys.length)];
+    const item = items[randomItemKey];
+
+    acquireItem(item);
 }
 
 function startGame() {
@@ -288,12 +317,12 @@ function gameLoop(timestamp) {
     lastTime = timestamp;
 
     if (!isPaused) {
-        scoreIncrementTime += delta;
-        if (scoreIncrementTime >= 1000) { // Increment score every second
-            score += 10; // 100 points per 10 seconds = 10 points per second
-            scoreIncrementTime = 0;
-            updateUI();
-        }
+        // scoreIncrementTime += delta;
+        // if (scoreIncrementTime >= 1000) { // Increment score every second
+        //     score += 10; // 100 points per 10 seconds = 10 points per second
+        //     scoreIncrementTime = 0;
+        //     updateUI();
+        // }
 
         moveElements('.cactus, .bird, .coin, .item', delta);
         generateObstacles(delta);
@@ -316,7 +345,7 @@ function generateObstacles(delta) {
     if (lastObstaclePosition >= minObstacleDistance) {
         const randomNumber = Math.random();
         if (randomNumber < 0.9) { // 90% chance of obstacle generation
-            if (Math.random() < 0.9) { // 90% chance for cactus, 10% for bird
+            if (Math.random() < 0.8) { // 90% chance for cactus, 10% for bird
                 createCactus();
                 console.log('Cactus created');
             } else {
@@ -362,7 +391,9 @@ function moveElements(selector, delta) {
                 updateUI();
             }
         } else if (isObstacleCollision(element)) {
-            gameOver();
+            if (!isInvincible) {
+                gameOver();
+            }
         }
     });
 }
@@ -400,11 +431,6 @@ function createCactus() {
     cactus.style.position = 'absolute';
     cactus.style.left = '600px';
     cactus.style.bottom = '0px';
-    
-    // Randomly adjust cactus size
-    const scale = 0.8 + Math.random() * 0.4; // Random scale between 0.8 and 1.2
-    cactus.style.transform = `scale(${scale})`;
-    
     game.appendChild(cactus);
 }
 
@@ -503,7 +529,6 @@ function gameOver() {
     if (lives > 0) {
         alert('You lost a life! Remaining lives: ' + lives);
         resetObstacles();
-        gameSpeed = 3; // Reset game speed when losing a life
     } else {
         if (score > highScore) {
             highScore = score;
@@ -619,5 +644,20 @@ document.addEventListener('keydown', (event) => {
         togglePause(event);
     }
 });
+
+function activateInvincibility(duration) {
+    isInvincible = true;
+    setTimeout(() => {
+        isInvincible = false;
+    }, duration);
+}
+
+function activateSlowMotion(duration) {
+    originalGameSpeed = gameSpeed;
+    gameSpeed = 2;
+    setTimeout(() => {
+        gameSpeed = originalGameSpeed;
+    }, duration);
+}
 
 initGame();
