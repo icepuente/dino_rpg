@@ -140,6 +140,36 @@
         #difficultySelection button:hover {
             background-color: #1976D2;
         }
+        #controls {
+            padding: 10px;
+            background-color: #e0e0e0;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+        #controls h3 {
+            margin-top: 0;
+        }
+        #controls ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #controls li {
+            margin: 5px 0;
+        }
+        #startOverlay {
+            display: flex;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
@@ -164,6 +194,9 @@
             <div id="sun">☀️</div>
             <div id="dino">🦖</div>
         </div>
+        <div id="startOverlay">
+            <h2>Press 'Space' to Start</h2>
+        </div>
         <div id="pauseOverlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); color: white; justify-content: center; align-items: center; flex-direction: column;">
             <h2>Game Paused</h2>
             <p>Press 'P' to resume</p>
@@ -172,6 +205,14 @@
             <button onclick="setDifficulty('easy')">Easy</button>
             <button onclick="setDifficulty('medium')">Medium</button>
             <button onclick="setDifficulty('hard')">Hard</button>
+        </div>
+        <div id="controls">
+            <h3>Controls</h3>
+            <ul>
+                <li>Jump: <strong>Space</strong></li>
+                <li>Shoot Fireball: <strong>X</strong></li>
+                <li>Pause/Resume: <strong>P</strong></li>
+            </ul>
         </div>
     </div>
     <script src="game.js"></script>

@@ -3,6 +3,7 @@ const game = document.getElementById('game');
 const scoreElement = document.getElementById('score');
 const highScoreElement = document.getElementById('highScore');
 const skillsDiv = document.getElementById('skills');
+const startOverlay = document.getElementById('startOverlay'); // Get the start overlay element
 
 let isJumping = false;
 let score = 0;
@@ -40,6 +41,8 @@ const items = {
 let isPaused = false;
 let difficulty = 'medium'; // Change from const to let
 
+let gameStarted = false; // Add a flag to check if the game has started
+
 function togglePause() {
     isPaused = !isPaused;
     if (isPaused) {
@@ -55,7 +58,7 @@ function initGame() {
     initializeRPGElements();
     dino.style.bottom = '-10px';
     setDifficulty(difficulty); // Set difficulty without starting the game
-    startGame();
+    updateUI(); // Update UI without starting the game
 }
 
 function createSkillButtons() {
@@ -189,7 +192,7 @@ function moveFireball(fireball) {
         if (position >= gameRect.width || (bottomPosition <= 0 && bounceCount >= maxBounces)) {
             game.removeChild(fireball);
         } else {
-            const obstacles = document.querySelectorAll('.cactus, .bird');
+            const obstacles = document.querySelectorAll('.bird'); // Only check for birds
             let hitObstacle = false;
             for (let obstacle of obstacles) {
                 if (isFireballCollision(fireball, obstacle) && isOnScreen(obstacle)) {
@@ -540,6 +543,11 @@ function setDifficulty(level) {
 
 document.addEventListener('keydown', (event) => {
     if (event.code === 'Space') {
+        if (!gameStarted) {
+            gameStarted = true;
+            startGame();
+            startOverlay.style.display = 'none'; // Hide the start overlay
+        }
         startJump(event);
     } else if (event.code === 'KeyX') {
         shootFireball();
