@@ -43,6 +43,11 @@ let difficulty = null; // Change from const to let and initialize to null
 
 let gameStarted = false; // Add a flag to check if the game has started
 
+// Add these variables at the top of the file
+let isMobile = false;
+let gameContainerWidth = 600;
+let gameContainerHeight = 200;
+
 function togglePause() {
     isPaused = !isPaused;
     if (isPaused) {
@@ -56,8 +61,18 @@ function togglePause() {
 function initGame() {
     createSkillButtons();
     initializeRPGElements();
+    checkMobile();
+    resizeGame();
     dino.style.bottom = '-10px';
     updateUI(); // Update UI without starting the game
+    
+    // Add event listeners for mobile controls
+    document.getElementById('jumpButton').addEventListener('touchstart', startJump);
+    document.getElementById('fireButton').addEventListener('touchstart', shootFireball);
+    document.getElementById('pauseButton').addEventListener('touchstart', togglePause);
+    
+    // Add resize event listener
+    window.addEventListener('resize', resizeGame);
 }
 
 function createSkillButtons() {
@@ -120,11 +135,15 @@ function updateInventoryUI() {
     });
 }
 
+// Modify the startJump function to work with both keyboard and touch events
 function startJump(event) {
-    if (event.code === 'Space' && !isJumping) {
-        isJumping = true;
-        jumpStartTime = Date.now();
-        requestAnimationFrame(jumpAnimation);
+    if ((event.type === 'keydown' && event.code === 'Space') || event.type === 'touchstart') {
+        if (!isJumping) {
+            isJumping = true;
+            jumpStartTime = Date.now();
+            requestAnimationFrame(jumpAnimation);
+        }
+        event.preventDefault(); // Prevent default behavior for touch events
     }
 }
 
@@ -144,13 +163,17 @@ function jumpAnimation() {
     }
 }
 
-function shootFireball() {
-    const currentTime = Date.now();
-    if (currentTime - lastFireballTime < shootCooldown) return;
+// Modify the shootFireball function to work with both keyboard and touch events
+function shootFireball(event) {
+    if ((event.type === 'keydown' && event.code === 'KeyX') || event.type === 'touchstart') {
+        const currentTime = Date.now();
+        if (currentTime - lastFireballTime < shootCooldown) return;
 
-    lastFireballTime = currentTime;
-    const fireball = createFireball();
-    moveFireball(fireball);
+        lastFireballTime = currentTime;
+        const fireball = createFireball();
+        moveFireball(fireball);
+        event.preventDefault(); // Prevent default behavior for touch events
+    }
 }
 
 function createFireball() {
@@ -550,13 +573,50 @@ function setDifficulty(level) {
     startGame(); // Start the game immediately
 }
 
+function checkMobile() {
+    isMobile = window.innerWidth <= 600;
+    gameContainerWidth = isMobile ? window.innerWidth : 600;
+    gameContainerHeight = isMobile ? 150 : 200;
+}
+
+function resizeGame() {
+    checkMobile();
+    const gameContainer = document.getElementById('game-container');
+    const game = document.getElementById('game');
+    
+    gameContainer.style.width = `${gameContainerWidth}px`;
+    game.style.width = `${gameContainerWidth}px`;
+    game.style.height = `${gameContainerHeight}px`;
+    
+    // Adjust game elements positions if needed
+    // For example, adjust the sun's position
+    const sun = document.getElementById('sun');
+    sun.style.right = `${gameContainerWidth * 0.05}px`;
+    sun.style.top = `${gameContainerHeight * 0.1}px`;
+}
+
+// Modify the togglePause function to work with both keyboard and touch events
+function togglePause(event) {
+    if ((event.type === 'keydown' && event.code === 'KeyP') || event.type === 'touchstart') {
+        isPaused = !isPaused;
+        if (isPaused) {
+            document.getElementById('pauseOverlay').style.display = 'flex';
+        } else {
+            document.getElementById('pauseOverlay').style.display = 'none';
+            lastTime = null; // Reset lastTime to avoid large delta on unpause
+        }
+        event.preventDefault(); // Prevent default behavior for touch events
+    }
+}
+
+// Modify the event listeners to use the updated functions
 document.addEventListener('keydown', (event) => {
     if (event.code === 'Space') {
         startJump(event);
     } else if (event.code === 'KeyX') {
-        shootFireball();
+        shootFireball(event);
     } else if (event.code === 'KeyP') {
-        togglePause();
+        togglePause(event);
     }
 });
 
