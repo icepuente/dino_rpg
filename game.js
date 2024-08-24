@@ -245,42 +245,49 @@ function moveFireball(fireball) {
     let bottomPosition = parseInt(fireball.style.bottom);
     let yVelocity = 3;
     let bounceCount = 0;
+    const fireballSpeed = 300; // pixels per second
 
-    function animate() {
-        position += 2;
-        yVelocity -= 0.2;
-        bottomPosition += yVelocity;
+    function animate(lastTimestamp) {
+        return function(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const delta = (timestamp - lastTimestamp) / 1000; // Convert to seconds
+            lastTimestamp = timestamp;
 
-        if (bottomPosition <= 0 && bounceCount < maxBounces) {
-            bottomPosition = 0;
-            yVelocity = Math.abs(yVelocity) * 0.6;
-            bounceCount++;
-        }
+            position += fireballSpeed * delta;
+            yVelocity -= 0.2;
+            bottomPosition += yVelocity;
 
-        fireball.style.left = position + 'px';
-        fireball.style.bottom = bottomPosition + 'px';
-
-        if (position >= gameRect.width || (bottomPosition <= 0 && bounceCount >= maxBounces)) {
-            game.removeChild(fireball);
-        } else {
-            const obstacles = document.querySelectorAll('.bird'); // Only check for birds
-            let hitObstacle = false;
-            for (let obstacle of obstacles) {
-                if (isFireballCollision(fireball, obstacle) && isOnScreen(obstacle)) {
-                    destroyObstacle(obstacle);
-                    hitObstacle = true;
-                    break;
-                }
+            if (bottomPosition <= 0 && bounceCount < maxBounces) {
+                bottomPosition = 0;
+                yVelocity = Math.abs(yVelocity) * 0.6;
+                bounceCount++;
             }
-            if (hitObstacle) {
+
+            fireball.style.left = position + 'px';
+            fireball.style.bottom = bottomPosition + 'px';
+
+            if (position >= gameRect.width || (bottomPosition <= 0 && bounceCount >= maxBounces)) {
                 game.removeChild(fireball);
             } else {
-                requestAnimationFrame(animate);
+                const obstacles = document.querySelectorAll('.bird'); // Only check for birds
+                let hitObstacle = false;
+                for (let obstacle of obstacles) {
+                    if (isFireballCollision(fireball, obstacle) && isOnScreen(obstacle)) {
+                        destroyObstacle(obstacle);
+                        hitObstacle = true;
+                        break;
+                    }
+                }
+                if (hitObstacle) {
+                    game.removeChild(fireball);
+                } else {
+                    requestAnimationFrame(animate(lastTimestamp));
+                }
             }
         }
     }
 
-    requestAnimationFrame(animate);
+    requestAnimationFrame(animate());
 }
 
 function destroyObstacle(obstacle) {
